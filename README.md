@@ -1,6 +1,6 @@
 # Blog API 
 
-This is a starter scaffold for the Blog API (Node.js + Express + MongoDB).
+A minimal blogging REST API using Node.js, Express, and MongoDB.
 
 ## Quick start
 
@@ -14,7 +14,7 @@ This is a starter scaffold for the Blog API (Node.js + Express + MongoDB).
    ```
    npm run dev
    ```
-5. Server runs at `http://localhost:8000` by default.
+5. Server runs at `http://localhost:5000` by default.
 
 ## What is included
 
