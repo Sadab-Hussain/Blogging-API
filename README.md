@@ -1,4 +1,4 @@
-# Blog API - Starter Scaffold
+# Blog API 
 
 This is a starter scaffold for the Blog API (Node.js + Express + MongoDB).
 
