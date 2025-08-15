@@ -3,7 +3,7 @@ const User = require('../models/User');
 const VerificationToken = require('../models/VerificationToken');
 const { generateOTP, hashOTP, expiryFromNow } = require('../utils/otp');
 const { sendOTPEmail } = require('../utils/email');
-const { signAccess, signRefresh, verifyRefresh } = require('../utils/jwt');
+const { signAccess, signRefresh } = require('../utils/jwt');
 const bcrypt = require('bcrypt');
 
 exports.register = async (req, res, next) => {
@@ -53,9 +53,9 @@ exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return next(createError(400, 'Missing fields'));
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+password');
     if (!user) return next(createError(401, 'Invalid credentials'));
-    const passOk = await user.comparePassword(password);
+    const passOk = await bcrypt.compare(password, user.password);
     if (!passOk) return next(createError(401, 'Invalid credentials'));
     if (!user.isEmailVerified) return next(createError(403, 'Email not verified'));
     const payload = { id: user._id, role: user.role };
@@ -67,7 +67,11 @@ exports.login = async (req, res, next) => {
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
-    res.json({ success: true, accessToken, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+    res.json({
+      success: true,
+      accessToken,
+      user: { id: user._id, name: user.name, email: user.email, role: user.role }
+    });
   } catch (e) {
     next(e);
   }

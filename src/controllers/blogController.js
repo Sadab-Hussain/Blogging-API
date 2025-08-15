@@ -39,3 +39,13 @@ exports.listBlogs = async (req, res, next) => {
     next(e);
   }
 };
+
+exports.getBlogById = async (req, res, next) => {
+  try {
+    const blog = await Blog.findById(req.params.id).populate('author', 'name');
+    if (!blog) return next(createError(404, 'Blog not found'));
+    res.json({ success: true, data: blog });
+  } catch (e) {
+    next(e);
+  }
+};
