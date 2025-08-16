@@ -1,6 +1,7 @@
 const createError = require('http-errors');
 const Blog = require('../models/Blog');
 
+// CREATE a new blog post
 exports.createBlog = async (req, res, next) => {
   try {
     const { title, content, tags = [], isPublished = true } = req.body;
@@ -12,6 +13,7 @@ exports.createBlog = async (req, res, next) => {
   }
 };
 
+// READ - LIST (List all blog posts)
 exports.listBlogs = async (req, res, next) => {
   try {
     const { q, tag, author, page = 1, limit = 10, sort = '-createdAt' } = req.query;
@@ -23,7 +25,7 @@ exports.listBlogs = async (req, res, next) => {
 
     if (q) {
       query = Blog.find({ ...filter, $text: { $search: q } }, { score: { $meta: 'textScore' } })
-                  .sort({ score: { $meta: 'textScore' } });
+        .sort({ score: { $meta: 'textScore' } });
     } else {
       query = query.sort(sort);
     }
@@ -40,12 +42,59 @@ exports.listBlogs = async (req, res, next) => {
   }
 };
 
+// READ - ONE (tweak: also hide disabled)
 exports.getBlogById = async (req, res, next) => {
   try {
-    const blog = await Blog.findById(req.params.id).populate('author', 'name');
+    const blog = await Blog
+      .findOne({ _id: req.params.id, isDisabled: false })
+      .populate('author', 'name');
+
     if (!blog) return next(createError(404, 'Blog not found'));
+    res.json({ success: true, data: blog });
+  } catch (e) { next(e); }
+};
+
+// UPDATE a blog post (author or admin)
+exports.updateBlog = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { title, content, tags, isPublished } = req.body;
+
+    let blog = await Blog.findById(id);
+    if (!blog) return next(createError(404, 'Blog not found'));
+
+    if (blog.author.toString() !== req.user.id && req.user.role !== 'admin') {
+      return next(createError(403, 'Not authorized to update this blog'));
+    }
+
+    if (title !== undefined) blog.title = title;
+    if (content !== undefined) blog.content = content;
+    if (tags !== undefined) blog.tags = tags;
+    if (isPublished !== undefined) blog.isPublished = isPublished;
+
+    blog = await blog.save();
+
     res.json({ success: true, data: blog });
   } catch (e) {
     next(e);
   }
+};
+
+// DELETE Blog (soft delete via isDisabled = true)
+exports.deleteBlog = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const blog = await Blog.findById(id);
+    if (!blog || blog.isDisabled) return next(createError(404, 'Blog not found'));
+
+    if (blog.author.toString() !== req.user.id && req.user.role !== 'admin') {
+      return next(createError(403, 'Not authorized to delete this blog'));
+    }
+
+    blog.isDisabled = true;
+    await blog.save();
+
+    res.json({ success: true, message: 'Blog deleted' });
+  } catch (e) { next(e); }
 };
